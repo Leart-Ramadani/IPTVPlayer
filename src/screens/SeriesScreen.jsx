@@ -1,4 +1,4 @@
-// src/screens/SeriesScreen.js
+// src/screens/SeriesScreen.jsx
 import React, { useState, useEffect } from 'react';
 import {
     View,
@@ -11,37 +11,58 @@ import {
     Alert,
     RefreshControl,
     Dimensions,
+    TextInput,
 } from 'react-native';
 import { createAPIInstance } from '../api/xtreamAPI';
 
 const { width } = Dimensions.get('window');
-const ITEM_WIDTH = (width - 48) / 3; // 3 columns with padding
+const ITEM_WIDTH = (width - 48) / 3;
 
 const SeriesScreen = ({ navigation }) => {
     const [series, setSeries] = useState([]);
+    const [filteredSeries, setFilteredSeries] = useState([]);
     const [categories, setCategories] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         loadSeries();
     }, [selectedCategory]);
+
+    useEffect(() => {
+        filterSeries();
+    }, [searchQuery, series]);
+
+    const filterSeries = () => {
+        if (!searchQuery.trim()) {
+            setFilteredSeries(series);
+            return;
+        }
+
+        const query = searchQuery.toLowerCase();
+        const filtered = series.filter(seriesItem =>
+            seriesItem.name.toLowerCase().includes(query) ||
+            (seriesItem.category_name && seriesItem.category_name.toLowerCase().includes(query)) ||
+            (seriesItem.rating && seriesItem.rating.toString().includes(query))
+        );
+        setFilteredSeries(filtered);
+    };
 
     const loadSeries = async () => {
         try {
             setIsLoading(true);
             const api = await createAPIInstance();
 
-            // Load categories if not already loaded
             if (categories.length === 0) {
                 const cats = await api.getSeriesCategories();
                 setCategories([{ category_id: null, category_name: 'All Series' }, ...cats]);
             }
 
-            // Load series
             const seriesData = await api.getSeries(selectedCategory);
             setSeries(seriesData);
+            setFilteredSeries(seriesData);
             setIsLoading(false);
         } catch (error) {
             setIsLoading(false);
@@ -61,8 +82,6 @@ const SeriesScreen = ({ navigation }) => {
             const api = await createAPIInstance();
             const seriesInfo = await api.getSeriesInfo(seriesItem.series_id);
 
-            // Navigate to series detail screen (you'll need to create this)
-            // For now, we'll just play the first episode of the first season
             const seasons = Object.keys(seriesInfo.episodes);
             if (seasons.length > 0) {
                 const firstSeason = seasons[0];
@@ -85,6 +104,10 @@ const SeriesScreen = ({ navigation }) => {
             Alert.alert('Error', 'Failed to load series details');
             console.error('Error loading series details:', error);
         }
+    };
+
+    const clearSearch = () => {
+        setSearchQuery('');
     };
 
     const renderSeries = ({ item }) => (
@@ -155,8 +178,34 @@ const SeriesScreen = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
+            {/* Search Bar */}
+            <View style={styles.searchContainer}>
+                <View style={styles.searchInputContainer}>
+                    <Text style={styles.searchIcon}>🔍</Text>
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search series..."
+                        placeholderTextColor="#71717a"
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+                            <Text style={styles.clearIcon}>✕</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+                {searchQuery.length > 0 && (
+                    <Text style={styles.resultCount}>
+                        {filteredSeries.length} result{filteredSeries.length !== 1 ? 's' : ''}
+                    </Text>
+                )}
+            </View>
+
             {/* Categories */}
-            {categories.length > 0 && (
+            {categories.length > 0 && !searchQuery && (
                 <View style={styles.categoriesContainer}>
                     <FlatList
                         horizontal
@@ -171,7 +220,7 @@ const SeriesScreen = ({ navigation }) => {
 
             {/* Series Grid */}
             <FlatList
-                data={series}
+                data={filteredSeries}
                 renderItem={renderSeries}
                 keyExtractor={(item) => item.series_id.toString()}
                 numColumns={3}
@@ -186,7 +235,15 @@ const SeriesScreen = ({ navigation }) => {
                 }
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyText}>No series available</Text>
+                        <Text style={styles.emptyIcon}>🔍</Text>
+                        <Text style={styles.emptyText}>
+                            {searchQuery ? 'No series found' : 'No series available'}
+                        </Text>
+                        {searchQuery && (
+                            <Text style={styles.emptySubtext}>
+                                Try a different search term
+                            </Text>
+                        )}
                     </View>
                 }
             />
@@ -209,6 +266,44 @@ const styles = StyleSheet.create({
         color: '#71717a',
         marginTop: 12,
         fontSize: 14,
+    },
+    searchContainer: {
+        padding: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#27272a',
+        backgroundColor: '#09090b',
+    },
+    searchInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#18181b',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#27272a',
+        paddingHorizontal: 12,
+    },
+    searchIcon: {
+        fontSize: 16,
+        marginRight: 8,
+    },
+    searchInput: {
+        flex: 1,
+        color: '#ffffff',
+        fontSize: 15,
+        paddingVertical: 12,
+    },
+    clearButton: {
+        padding: 4,
+    },
+    clearIcon: {
+        color: '#71717a',
+        fontSize: 18,
+    },
+    resultCount: {
+        color: '#71717a',
+        fontSize: 12,
+        marginTop: 8,
+        marginLeft: 4,
     },
     categoriesContainer: {
         borderBottomWidth: 1,
@@ -317,9 +412,18 @@ const styles = StyleSheet.create({
         paddingVertical: 48,
         width: '100%',
     },
+    emptyIcon: {
+        fontSize: 48,
+        marginBottom: 12,
+    },
     emptyText: {
         color: '#71717a',
         fontSize: 16,
+        marginBottom: 4,
+    },
+    emptySubtext: {
+        color: '#52525b',
+        fontSize: 14,
     },
 });
 

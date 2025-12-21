@@ -1,4 +1,4 @@
-// src/screens/MoviesScreen.js
+// src/screens/MoviesScreen.jsx
 import React, { useState, useEffect } from 'react';
 import {
     View,
@@ -11,37 +11,58 @@ import {
     Alert,
     RefreshControl,
     Dimensions,
+    TextInput,
 } from 'react-native';
 import { createAPIInstance } from '../api/xtreamAPI';
 
 const { width } = Dimensions.get('window');
-const ITEM_WIDTH = (width - 48) / 3; // 3 columns with padding
+const ITEM_WIDTH = (width - 48) / 3;
 
 const MoviesScreen = ({ navigation }) => {
     const [movies, setMovies] = useState([]);
+    const [filteredMovies, setFilteredMovies] = useState([]);
     const [categories, setCategories] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         loadMovies();
     }, [selectedCategory]);
+
+    useEffect(() => {
+        filterMovies();
+    }, [searchQuery, movies]);
+
+    const filterMovies = () => {
+        if (!searchQuery.trim()) {
+            setFilteredMovies(movies);
+            return;
+        }
+
+        const query = searchQuery.toLowerCase();
+        const filtered = movies.filter(movie =>
+            movie.name.toLowerCase().includes(query) ||
+            (movie.category_name && movie.category_name.toLowerCase().includes(query)) ||
+            (movie.rating && movie.rating.toString().includes(query))
+        );
+        setFilteredMovies(filtered);
+    };
 
     const loadMovies = async () => {
         try {
             setIsLoading(true);
             const api = await createAPIInstance();
 
-            // Load categories if not already loaded
             if (categories.length === 0) {
                 const cats = await api.getVODCategories();
                 setCategories([{ category_id: null, category_name: 'All Movies' }, ...cats]);
             }
 
-            // Load movies
             const streams = await api.getVODStreams(selectedCategory);
             setMovies(streams);
+            setFilteredMovies(streams);
             setIsLoading(false);
         } catch (error) {
             setIsLoading(false);
@@ -70,6 +91,10 @@ const MoviesScreen = ({ navigation }) => {
             Alert.alert('Error', 'Failed to play movie');
             console.error('Error playing movie:', error);
         }
+    };
+
+    const clearSearch = () => {
+        setSearchQuery('');
     };
 
     const renderMovie = ({ item }) => (
@@ -135,8 +160,34 @@ const MoviesScreen = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
+            {/* Search Bar */}
+            <View style={styles.searchContainer}>
+                <View style={styles.searchInputContainer}>
+                    <Text style={styles.searchIcon}>🔍</Text>
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search movies..."
+                        placeholderTextColor="#71717a"
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+                            <Text style={styles.clearIcon}>✕</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+                {searchQuery.length > 0 && (
+                    <Text style={styles.resultCount}>
+                        {filteredMovies.length} result{filteredMovies.length !== 1 ? 's' : ''}
+                    </Text>
+                )}
+            </View>
+
             {/* Categories */}
-            {categories.length > 0 && (
+            {categories.length > 0 && !searchQuery && (
                 <View style={styles.categoriesContainer}>
                     <FlatList
                         horizontal
@@ -151,7 +202,7 @@ const MoviesScreen = ({ navigation }) => {
 
             {/* Movies Grid */}
             <FlatList
-                data={movies}
+                data={filteredMovies}
                 renderItem={renderMovie}
                 keyExtractor={(item) => item.stream_id.toString()}
                 numColumns={3}
@@ -166,7 +217,15 @@ const MoviesScreen = ({ navigation }) => {
                 }
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyText}>No movies available</Text>
+                        <Text style={styles.emptyIcon}>🔍</Text>
+                        <Text style={styles.emptyText}>
+                            {searchQuery ? 'No movies found' : 'No movies available'}
+                        </Text>
+                        {searchQuery && (
+                            <Text style={styles.emptySubtext}>
+                                Try a different search term
+                            </Text>
+                        )}
                     </View>
                 }
             />
@@ -189,6 +248,44 @@ const styles = StyleSheet.create({
         color: '#71717a',
         marginTop: 12,
         fontSize: 14,
+    },
+    searchContainer: {
+        padding: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#27272a',
+        backgroundColor: '#09090b',
+    },
+    searchInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#18181b',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#27272a',
+        paddingHorizontal: 12,
+    },
+    searchIcon: {
+        fontSize: 16,
+        marginRight: 8,
+    },
+    searchInput: {
+        flex: 1,
+        color: '#ffffff',
+        fontSize: 15,
+        paddingVertical: 12,
+    },
+    clearButton: {
+        padding: 4,
+    },
+    clearIcon: {
+        color: '#71717a',
+        fontSize: 18,
+    },
+    resultCount: {
+        color: '#71717a',
+        fontSize: 12,
+        marginTop: 8,
+        marginLeft: 4,
     },
     categoriesContainer: {
         borderBottomWidth: 1,
@@ -292,9 +389,18 @@ const styles = StyleSheet.create({
         paddingVertical: 48,
         width: '100%',
     },
+    emptyIcon: {
+        fontSize: 48,
+        marginBottom: 12,
+    },
     emptyText: {
         color: '#71717a',
         fontSize: 16,
+        marginBottom: 4,
+    },
+    emptySubtext: {
+        color: '#52525b',
+        fontSize: 14,
     },
 });
 

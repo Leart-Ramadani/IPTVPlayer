@@ -1,4 +1,4 @@
-// src/screens/HomeScreen.js
+// src/screens/HomeScreen.jsx - Add connection test feature
 import React, { useState, useEffect } from 'react';
 import {
     View,
@@ -8,12 +8,15 @@ import {
     SafeAreaView,
     Alert,
     ScrollView,
+    ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createAPIInstance } from '../api/xtreamAPI';
 
 const HomeScreen = ({ navigation }) => {
     const [userInfo, setUserInfo] = useState(null);
     const [playlistName, setPlaylistName] = useState('IPTV Player');
+    const [isTestingConnection, setIsTestingConnection] = useState(false);
 
     useEffect(() => {
         loadUserInfo();
@@ -34,6 +37,46 @@ const HomeScreen = ({ navigation }) => {
             }
         } catch (error) {
             console.error('Error loading user info:', error);
+        }
+    };
+
+    const testConnection = async () => {
+        setIsTestingConnection(true);
+        try {
+            const api = await createAPIInstance();
+            const response = await api.authenticate();
+
+            if (response.user_info && response.user_info.auth === 1) {
+                // Update stored user info
+                await AsyncStorage.setItem('iptv_user_info', JSON.stringify(response.user_info));
+                setUserInfo(response.user_info);
+
+                Alert.alert(
+                    'Connection Success',
+                    'Your IPTV service is working correctly!\n\n' +
+                    `Status: Active\n` +
+                    `Connections: ${response.user_info.max_connections || 'N/A'}\n` +
+                    `Expires: ${response.user_info.exp_date ? new Date(parseInt(response.user_info.exp_date) * 1000).toLocaleDateString() : 'N/A'}`
+                );
+            } else {
+                Alert.alert(
+                    'Authentication Failed',
+                    'Could not authenticate with your IPTV service. Please check your credentials.'
+                );
+            }
+        } catch (error) {
+            console.error('Connection test error:', error);
+            Alert.alert(
+                'Connection Error',
+                'Failed to connect to IPTV service. This could be due to:\n\n' +
+                '• Invalid server URL\n' +
+                '• Incorrect username/password\n' +
+                '• Service is temporarily down\n' +
+                '• Network connectivity issues\n\n' +
+                'Please verify your credentials in the login screen.'
+            );
+        } finally {
+            setIsTestingConnection(false);
         }
     };
 
@@ -86,7 +129,6 @@ const HomeScreen = ({ navigation }) => {
 
     return (
         <SafeAreaView style={styles.container}>
-            {/* Header */}
             <View style={styles.header}>
                 <View>
                     <Text style={styles.headerTitle}>{playlistName}</Text>
@@ -102,7 +144,6 @@ const HomeScreen = ({ navigation }) => {
             </View>
 
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                {/* Account Info Card */}
                 {userInfo && (
                     <View style={styles.accountCard}>
                         <Text style={styles.accountCardTitle}>Account Status</Text>
@@ -128,10 +169,21 @@ const HomeScreen = ({ navigation }) => {
                                 </View>
                             )}
                         </View>
+
+                        <TouchableOpacity
+                            style={styles.testButton}
+                            onPress={testConnection}
+                            disabled={isTestingConnection}
+                        >
+                            {isTestingConnection ? (
+                                <ActivityIndicator size="small" color="#ffffff" />
+                            ) : (
+                                <Text style={styles.testButtonText}>Test Connection</Text>
+                            )}
+                        </TouchableOpacity>
                     </View>
                 )}
 
-                {/* Menu Items */}
                 <View style={styles.menuContainer}>
                     <Text style={styles.sectionTitle}>Browse Content</Text>
                     {menuItems.map((item) => (
@@ -157,12 +209,15 @@ const HomeScreen = ({ navigation }) => {
                     ))}
                 </View>
 
-                {/* Info Section */}
                 <View style={styles.infoSection}>
-                    <Text style={styles.infoTitle}>About</Text>
+                    <Text style={styles.infoTitle}>Troubleshooting</Text>
                     <Text style={styles.infoText}>
-                        This IPTV player allows you to watch live TV, movies, and series from your IPTV provider.
-                        Make sure you have a stable internet connection for the best streaming experience.
+                        If you encounter playback errors (HTTP 458), this usually means:
+                        {'\n\n'}• Your credentials may have expired
+                        {'\n'}• Maximum connection limit reached
+                        {'\n'}• Service is temporarily unavailable
+                        {'\n\n'}
+                        Use the "Test Connection" button above to verify your account status.
                     </Text>
                 </View>
             </ScrollView>
@@ -174,6 +229,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#09090b',
+        marginTop: 20
     },
     header: {
         flexDirection: 'row',
@@ -222,6 +278,7 @@ const styles = StyleSheet.create({
     },
     accountInfo: {
         gap: 12,
+        marginBottom: 16,
     },
     accountInfoItem: {
         flexDirection: 'row',
@@ -249,6 +306,18 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
         color: '#22c55e',
+    },
+    testButton: {
+        backgroundColor: '#2563eb',
+        borderRadius: 8,
+        padding: 12,
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    testButtonText: {
+        color: '#ffffff',
+        fontSize: 14,
+        fontWeight: '600',
     },
     menuContainer: {
         marginBottom: 24,

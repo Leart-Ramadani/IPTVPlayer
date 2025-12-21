@@ -1,4 +1,4 @@
-// src/screens/LiveTVScreen.js
+// src/screens/LiveTVScreen.jsx
 import React, { useState, useEffect } from 'react';
 import {
     View,
@@ -10,34 +10,54 @@ import {
     Image,
     Alert,
     RefreshControl,
+    TextInput,
 } from 'react-native';
 import { createAPIInstance } from '../api/xtreamAPI';
 
 const LiveTVScreen = ({ navigation }) => {
     const [channels, setChannels] = useState([]);
+    const [filteredChannels, setFilteredChannels] = useState([]);
     const [categories, setCategories] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         loadChannels();
     }, [selectedCategory]);
+
+    useEffect(() => {
+        filterChannels();
+    }, [searchQuery, channels]);
+
+    const filterChannels = () => {
+        if (!searchQuery.trim()) {
+            setFilteredChannels(channels);
+            return;
+        }
+
+        const query = searchQuery.toLowerCase();
+        const filtered = channels.filter(channel =>
+            channel.name.toLowerCase().includes(query) ||
+            (channel.category_name && channel.category_name.toLowerCase().includes(query))
+        );
+        setFilteredChannels(filtered);
+    };
 
     const loadChannels = async () => {
         try {
             setIsLoading(true);
             const api = await createAPIInstance();
 
-            // Load categories if not already loaded
             if (categories.length === 0) {
                 const cats = await api.getLiveCategories();
                 setCategories([{ category_id: null, category_name: 'All Channels' }, ...cats]);
             }
 
-            // Load channels
             const streams = await api.getLiveStreams(selectedCategory);
             setChannels(streams);
+            setFilteredChannels(streams);
             setIsLoading(false);
         } catch (error) {
             setIsLoading(false);
@@ -66,6 +86,10 @@ const LiveTVScreen = ({ navigation }) => {
             Alert.alert('Error', 'Failed to play channel');
             console.error('Error playing channel:', error);
         }
+    };
+
+    const clearSearch = () => {
+        setSearchQuery('');
     };
 
     const renderChannel = ({ item }) => (
@@ -132,8 +156,34 @@ const LiveTVScreen = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
+            {/* Search Bar */}
+            <View style={styles.searchContainer}>
+                <View style={styles.searchInputContainer}>
+                    <Text style={styles.searchIcon}>🔍</Text>
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search channels..."
+                        placeholderTextColor="#71717a"
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+                            <Text style={styles.clearIcon}>✕</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+                {searchQuery.length > 0 && (
+                    <Text style={styles.resultCount}>
+                        {filteredChannels.length} result{filteredChannels.length !== 1 ? 's' : ''}
+                    </Text>
+                )}
+            </View>
+
             {/* Categories */}
-            {categories.length > 0 && (
+            {categories.length > 0 && !searchQuery && (
                 <View style={styles.categoriesContainer}>
                     <FlatList
                         horizontal
@@ -148,7 +198,7 @@ const LiveTVScreen = ({ navigation }) => {
 
             {/* Channels List */}
             <FlatList
-                data={channels}
+                data={filteredChannels}
                 renderItem={renderChannel}
                 keyExtractor={(item) => item.stream_id.toString()}
                 contentContainerStyle={styles.channelsList}
@@ -161,7 +211,15 @@ const LiveTVScreen = ({ navigation }) => {
                 }
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyText}>No channels available</Text>
+                        <Text style={styles.emptyIcon}>🔍</Text>
+                        <Text style={styles.emptyText}>
+                            {searchQuery ? 'No channels found' : 'No channels available'}
+                        </Text>
+                        {searchQuery && (
+                            <Text style={styles.emptySubtext}>
+                                Try a different search term
+                            </Text>
+                        )}
                     </View>
                 }
             />
@@ -184,6 +242,44 @@ const styles = StyleSheet.create({
         color: '#71717a',
         marginTop: 12,
         fontSize: 14,
+    },
+    searchContainer: {
+        padding: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#27272a',
+        backgroundColor: '#09090b',
+    },
+    searchInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#18181b',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#27272a',
+        paddingHorizontal: 12,
+    },
+    searchIcon: {
+        fontSize: 16,
+        marginRight: 8,
+    },
+    searchInput: {
+        flex: 1,
+        color: '#ffffff',
+        fontSize: 15,
+        paddingVertical: 12,
+    },
+    clearButton: {
+        padding: 4,
+    },
+    clearIcon: {
+        color: '#71717a',
+        fontSize: 18,
+    },
+    resultCount: {
+        color: '#71717a',
+        fontSize: 12,
+        marginTop: 8,
+        marginLeft: 4,
     },
     categoriesContainer: {
         borderBottomWidth: 1,
@@ -276,9 +372,18 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 48,
     },
+    emptyIcon: {
+        fontSize: 48,
+        marginBottom: 12,
+    },
     emptyText: {
         color: '#71717a',
         fontSize: 16,
+        marginBottom: 4,
+    },
+    emptySubtext: {
+        color: '#52525b',
+        fontSize: 14,
     },
 });
 
