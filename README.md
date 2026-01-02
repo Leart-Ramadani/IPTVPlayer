@@ -1,50 +1,80 @@
-# Welcome to your Expo app 👋
+# IPTV Player App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+## 📺 Overview
 
-## Get started
+This IPTV Player App is a modern, lightweight, and user-friendly application designed to stream IPTV content using **Xtream Codes**  formats. It focuses on performance, simplicity, and a clean user interface, making it suitable for everyday IPTV usage across Live TV, Movies, and Series.
 
-1. Install dependencies
+> ⚠️ **Important Notice**: This application **does not provide any IPTV content**. Users must supply their own legally obtained IPTV credentials or playlists.
 
-   ```bash
-   npm install
-   ```
+---
 
-2. Start the app
+## ✨ Key Features
 
-   ```bash
-   npx expo start
-   ```
+* ✅ **Xtream Codes Support**
+  Login using server URL, username, and password
 
-In the output, you'll find options to open the app in a
+* 📡 **Live TV Streaming**
+  Watch live television channels with fast loading and smooth playback
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+* 🎬 **Movies on Demand (VOD)**
+  Browse and stream movies with metadata and poster support
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+* 📺 **TV Series**
+  Organized seasons and episodes for an easy binge‑watching experience
 
-## Get a fresh project
+* 🎨 **Modern & Clean UI**
+  Minimal, intuitive design focused on usability and speed
 
-When you're ready, run:
+* ⚡ **Fast & Optimized Performance**
+  Built for modern devices with efficient streaming handling
 
-```bash
-npm run reset-project
-```
+---
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 🧩 Supported Formats
 
-## Learn more
+| Format           | Description                                        |
+| ---------------- | -------------------------------------------------- |
+| Xtream Codes API | Full IPTV management with Live TV, Movies & Series |
 
-To learn more about developing your project with Expo, look at the following resources:
+---
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## 🖼️ App Screenshots
 
-## Join the community
+> ![Login Screen](assets/app-images/login.jpg)
+> ![Home Screen](assets/app-images/home.jpg)
+> ![Live TV Screen](assets/app-images/live-tv.jpg)
+> ![Movies Screen](assets/app-images/movies.jpg)
+> ![Movie Details Screeen](assets/app-images/movie-detail.jpg)
+> ![Series Screen](assets/app-images/series.jpg)
+> ![Series Details Screen](assets/app-images/series-detail.jpg)
 
-Join our community of developers creating universal apps.
+---
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 🔒 Legal Disclaimer
+
+This IPTV Player App is **only a media player**.
+
+* It does **not host**, **provide**, or **sell** any IPTV content
+* It does **not include preloaded channels or playlists**
+* Users are fully responsible for the content they access
+
+Please ensure you have the legal right to stream any content used with this application.
+
+---
+
+## 🚀 Use Cases
+
+* Personal IPTV streaming
+* IPTV service clients
+* Testing IPTV playlists
+* Clean alternative to bloated IPTV players
+
+---
+
+## 📌 Summary
+
+The IPTV Player App delivers a **simple yet powerful IPTV experience** by supporting the most popular IPTV formats while maintaining a modern and clean design. It gives users full control over their own content without enforcing or providing any media itself.
+
+---
+
+**© IPTV Player App – Media Player Only**
