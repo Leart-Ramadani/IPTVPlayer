@@ -12,6 +12,7 @@ import LiveTVScreen from './src/screens/LiveTVScreen';
 import MoviesScreen from './src/screens/MoviesScreen';
 import SeriesScreen from './src/screens/SeriesScreen';
 import SeriesDetailScreen from './src/screens/SeriesDetailScreen';
+import MovieDetailScreen from './src/screens/MovieDetailScreen';
 import PlayerScreen from './src/screens/PlayerScreen';
 
 const Stack = createStackNavigator();
@@ -63,6 +64,11 @@ export default function App() {
                         name="Movies"
                         component={MoviesScreen}
                         options={{ title: 'Movies' }}
+                    />
+                    <Stack.Screen
+                        name="MovieDetail"
+                        component={MovieDetailScreen}
+                        options={{ title: 'Movie Details' }}
                     />
                     <Stack.Screen
                         name="Series"

@@ -1,4 +1,4 @@
-// src/screens/LiveTVScreen.jsx
+// src/screens/LiveTVScreen.jsx - Updated with Category Modal
 import React, { useState, useEffect } from 'react';
 import {
     View,
@@ -11,6 +11,8 @@ import {
     Alert,
     RefreshControl,
     TextInput,
+    Modal,
+    ScrollView,
 } from 'react-native';
 import { createAPIInstance } from '../api/xtreamAPI';
 
@@ -22,6 +24,7 @@ const LiveTVScreen = ({ navigation }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [showCategoryModal, setShowCategoryModal] = useState(false);
 
     useEffect(() => {
         loadChannels();
@@ -88,8 +91,21 @@ const LiveTVScreen = ({ navigation }) => {
         }
     };
 
+    const handleCategorySelect = (category) => {
+        setSelectedCategory(category.category_id);
+        setShowCategoryModal(false);
+    };
+
     const clearSearch = () => {
         setSearchQuery('');
+    };
+
+    const getSelectedCategoryName = () => {
+        if (selectedCategory === null) {
+            return 'All Channels';
+        }
+        const category = categories.find(cat => cat.category_id === selectedCategory);
+        return category ? category.category_name : 'All Channels';
     };
 
     const renderChannel = ({ item }) => (
@@ -126,22 +142,25 @@ const LiveTVScreen = ({ navigation }) => {
         </TouchableOpacity>
     );
 
-    const renderCategory = ({ item }) => (
+    const renderCategoryItem = ({ item }) => (
         <TouchableOpacity
             style={[
-                styles.categoryChip,
-                selectedCategory === item.category_id && styles.categoryChipActive,
+                styles.categoryModalItem,
+                selectedCategory === item.category_id && styles.categoryModalItemActive
             ]}
-            onPress={() => setSelectedCategory(item.category_id)}
+            onPress={() => handleCategorySelect(item)}
         >
             <Text
                 style={[
-                    styles.categoryText,
-                    selectedCategory === item.category_id && styles.categoryTextActive,
+                    styles.categoryModalText,
+                    selectedCategory === item.category_id && styles.categoryModalTextActive
                 ]}
             >
                 {item.category_name}
             </Text>
+            {selectedCategory === item.category_id && (
+                <Text style={styles.checkMark}>✓</Text>
+            )}
         </TouchableOpacity>
     );
 
@@ -156,7 +175,7 @@ const LiveTVScreen = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
-            {/* Search Bar */}
+            {/* Search and Filter Bar */}
             <View style={styles.searchContainer}>
                 <View style={styles.searchInputContainer}>
                     <Text style={styles.searchIcon}>🔍</Text>
@@ -175,26 +194,26 @@ const LiveTVScreen = ({ navigation }) => {
                         </TouchableOpacity>
                     )}
                 </View>
+
+                {/* Category Button */}
+                <TouchableOpacity
+                    style={styles.categoryButton}
+                    onPress={() => setShowCategoryModal(true)}
+                    activeOpacity={0.7}
+                >
+                    <Text style={styles.categoryButtonIcon}>📂</Text>
+                    <Text style={styles.categoryButtonText} numberOfLines={1}>
+                        {getSelectedCategoryName()}
+                    </Text>
+                    <Text style={styles.categoryButtonArrow}>▼</Text>
+                </TouchableOpacity>
+
                 {searchQuery.length > 0 && (
                     <Text style={styles.resultCount}>
                         {filteredChannels.length} result{filteredChannels.length !== 1 ? 's' : ''}
                     </Text>
                 )}
             </View>
-
-            {/* Categories */}
-            {categories.length > 0 && !searchQuery && (
-                <View style={styles.categoriesContainer}>
-                    <FlatList
-                        horizontal
-                        data={categories}
-                        renderItem={renderCategory}
-                        keyExtractor={(item) => item.category_id?.toString() || 'all'}
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.categoriesList}
-                    />
-                </View>
-            )}
 
             {/* Channels List */}
             <FlatList
@@ -223,6 +242,35 @@ const LiveTVScreen = ({ navigation }) => {
                     </View>
                 }
             />
+
+            {/* Category Selection Modal */}
+            <Modal
+                visible={showCategoryModal}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowCategoryModal(false)}
+            >
+                <TouchableOpacity
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setShowCategoryModal(false)}
+                >
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Select Category</Text>
+                            <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
+                                <Text style={styles.closeButton}>✕</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <FlatList
+                            data={categories}
+                            renderItem={renderCategoryItem}
+                            keyExtractor={(item) => item.category_id?.toString() || 'all'}
+                            style={styles.categoryList}
+                        />
+                    </View>
+                </TouchableOpacity>
+            </Modal>
         </View>
     );
 };
@@ -257,6 +305,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#27272a',
         paddingHorizontal: 12,
+        marginBottom: 8,
     },
     searchIcon: {
         fontSize: 16,
@@ -275,41 +324,35 @@ const styles = StyleSheet.create({
         color: '#71717a',
         fontSize: 18,
     },
+    categoryButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#18181b',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#27272a',
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+        gap: 8,
+    },
+    categoryButtonIcon: {
+        fontSize: 16,
+    },
+    categoryButtonText: {
+        flex: 1,
+        color: '#ffffff',
+        fontSize: 15,
+        fontWeight: '500',
+    },
+    categoryButtonArrow: {
+        color: '#71717a',
+        fontSize: 12,
+    },
     resultCount: {
         color: '#71717a',
         fontSize: 12,
         marginTop: 8,
         marginLeft: 4,
-    },
-    categoriesContainer: {
-        borderBottomWidth: 1,
-        borderBottomColor: '#27272a',
-        backgroundColor: '#09090b',
-    },
-    categoriesList: {
-        paddingHorizontal: 12,
-        paddingVertical: 12,
-    },
-    categoryChip: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: '#18181b',
-        borderWidth: 1,
-        borderColor: '#27272a',
-        marginRight: 8,
-    },
-    categoryChipActive: {
-        backgroundColor: '#2563eb',
-        borderColor: '#2563eb',
-    },
-    categoryText: {
-        color: '#a1a1aa',
-        fontSize: 14,
-        fontWeight: '500',
-    },
-    categoryTextActive: {
-        color: '#ffffff',
     },
     channelsList: {
         padding: 8,
@@ -384,6 +427,63 @@ const styles = StyleSheet.create({
     emptySubtext: {
         color: '#52525b',
         fontSize: 14,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContainer: {
+        backgroundColor: '#18181b',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#27272a',
+        width: '85%',
+        maxHeight: '70%',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#27272a',
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#ffffff',
+    },
+    closeButton: {
+        fontSize: 24,
+        color: '#71717a',
+    },
+    categoryList: {
+        maxHeight: 400,
+    },
+    categoryModalItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#27272a',
+    },
+    categoryModalItemActive: {
+        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+    },
+    categoryModalText: {
+        fontSize: 16,
+        color: '#a1a1aa',
+    },
+    categoryModalTextActive: {
+        color: '#2563eb',
+        fontWeight: '600',
+    },
+    checkMark: {
+        fontSize: 18,
+        color: '#2563eb',
     },
 });
 

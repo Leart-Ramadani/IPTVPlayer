@@ -1,4 +1,4 @@
-// src/screens/SeriesDetailScreen.jsx
+// src/screens/SeriesDetailScreen.jsx - Improved with trailers and cast
 import React, { useState, useEffect } from 'react';
 import {
     View,
@@ -9,9 +9,11 @@ import {
     ActivityIndicator,
     Image,
     Alert,
-    FlatList,
+    Dimensions,
 } from 'react-native';
 import { createAPIInstance } from '../api/xtreamAPI';
+
+const { width } = Dimensions.get('window');
 
 const SeriesDetailScreen = ({ route, navigation }) => {
     const { seriesId, seriesName, seriesCover } = route.params;
@@ -64,6 +66,14 @@ const SeriesDetailScreen = ({ route, navigation }) => {
         }
     };
 
+    const handlePlayTrailer = (trailerUrl) => {
+        navigation.navigate('Player', {
+            streamUrl: trailerUrl,
+            title: `${seriesName} - Trailer`,
+            type: 'vod',
+        });
+    };
+
     const renderSeasonButton = (season) => (
         <TouchableOpacity
             key={season}
@@ -84,8 +94,9 @@ const SeriesDetailScreen = ({ route, navigation }) => {
         </TouchableOpacity>
     );
 
-    const renderEpisode = ({ item: episode }) => (
+    const renderEpisode = (episode, index) => (
         <TouchableOpacity
+            key={episode.id || index}
             style={styles.episodeItem}
             onPress={() => handleEpisodePress(episode)}
             activeOpacity={0.7}
@@ -113,12 +124,41 @@ const SeriesDetailScreen = ({ route, navigation }) => {
                     {episode.info?.rating && (
                         <Text style={styles.episodeRating}>⭐ {episode.info.rating}</Text>
                     )}
+                    {episode.info?.plot && (
+                        <Text style={styles.episodePlot} numberOfLines={2}>
+                            {episode.info.plot}
+                        </Text>
+                    )}
                 </View>
             </View>
             <View style={styles.playButton}>
                 <Text style={styles.playIcon}>▶</Text>
             </View>
         </TouchableOpacity>
+    );
+
+    const renderCastMember = (cast) => (
+        <View key={cast.name} style={styles.castItem}>
+            {cast.image ? (
+                <Image
+                    source={{ uri: cast.image }}
+                    style={styles.castImage}
+                    resizeMode="cover"
+                />
+            ) : (
+                <View style={[styles.castImage, styles.placeholderCastImage]}>
+                    <Text style={styles.castPlaceholder}>👤</Text>
+                </View>
+            )}
+            <Text style={styles.castName} numberOfLines={2}>
+                {cast.name}
+            </Text>
+            {cast.character && (
+                <Text style={styles.castCharacter} numberOfLines={1}>
+                    {cast.character}
+                </Text>
+            )}
+        </View>
     );
 
     if (isLoading) {
@@ -140,11 +180,35 @@ const SeriesDetailScreen = ({ route, navigation }) => {
 
     const seasons = Object.keys(seriesInfo.episodes).sort((a, b) => a - b);
     const episodes = selectedSeason ? seriesInfo.episodes[selectedSeason] : [];
+    const info = seriesInfo.info;
+    const hasTrailer = info?.youtube_trailer || info?.trailer_url;
+    const hasCast = info?.cast && typeof info.cast === 'string';
+    let castArray = [];
+
+    if (hasCast) {
+        try {
+            castArray = JSON.parse(info.cast);
+        } catch (e) {
+            console.error('Error parsing cast:', e);
+        }
+    }
 
     return (
         <View style={styles.container}>
-            {/* Header with Series Info */}
-            <ScrollView style={styles.content}>
+            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                {/* Header with Backdrop */}
+                {info?.backdrop_path && info.backdrop_path.length > 0 && (
+                    <View style={styles.backdropContainer}>
+                        <Image
+                            source={{ uri: info.backdrop_path[0] }}
+                            style={styles.backdrop}
+                            resizeMode="cover"
+                        />
+                        <View style={styles.backdropOverlay} />
+                    </View>
+                )}
+
+                {/* Series Header Info */}
                 <View style={styles.header}>
                     <View style={styles.headerContent}>
                         {seriesCover ? (
@@ -160,25 +224,83 @@ const SeriesDetailScreen = ({ route, navigation }) => {
                         )}
                         <View style={styles.headerInfo}>
                             <Text style={styles.seriesTitle}>{seriesName}</Text>
-                            {seriesInfo.info?.genre && (
-                                <Text style={styles.seriesGenre}>{seriesInfo.info.genre}</Text>
+
+                            {info?.genre && (
+                                <View style={styles.genreContainer}>
+                                    {info.genre.split(',').slice(0, 2).map((genre, index) => (
+                                        <View key={index} style={styles.genreChip}>
+                                            <Text style={styles.genreText}>{genre.trim()}</Text>
+                                        </View>
+                                    ))}
+                                </View>
                             )}
-                            {seriesInfo.info?.rating && (
-                                <Text style={styles.seriesRating}>⭐ {seriesInfo.info.rating}</Text>
-                            )}
-                            {seriesInfo.info?.releaseDate && (
-                                <Text style={styles.seriesYear}>{seriesInfo.info.releaseDate}</Text>
-                            )}
+
+                            <View style={styles.metaRow}>
+                                {info?.releaseDate && (
+                                    <Text style={styles.metaText}>{info.releaseDate}</Text>
+                                )}
+                                {info?.rating && (
+                                    <>
+                                        {info.releaseDate && <Text style={styles.metaDot}>•</Text>}
+                                        <Text style={styles.metaText}>⭐ {info.rating}</Text>
+                                    </>
+                                )}
+                            </View>
                         </View>
                     </View>
 
-                    {seriesInfo.info?.plot && (
+                    {/* Trailer Button */}
+                    {hasTrailer && (
+                        <TouchableOpacity
+                            style={styles.trailerButton}
+                            onPress={() => handlePlayTrailer(info.youtube_trailer || info.trailer_url)}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={styles.trailerIcon}>🎬</Text>
+                            <Text style={styles.trailerButtonText}>Watch Trailer</Text>
+                        </TouchableOpacity>
+                    )}
+
+                    {/* Synopsis */}
+                    {info?.plot && (
                         <View style={styles.plotContainer}>
                             <Text style={styles.plotTitle}>Synopsis</Text>
-                            <Text style={styles.plotText}>{seriesInfo.info.plot}</Text>
+                            <Text style={styles.plotText}>{info.plot}</Text>
+                        </View>
+                    )}
+
+                    {/* Director & Actors */}
+                    {(info?.director || info?.actors) && (
+                        <View style={styles.detailsContainer}>
+                            {info.director && (
+                                <View style={styles.detailRow}>
+                                    <Text style={styles.detailLabel}>Director:</Text>
+                                    <Text style={styles.detailValue}>{info.director}</Text>
+                                </View>
+                            )}
+                            {info.actors && (
+                                <View style={styles.detailRow}>
+                                    <Text style={styles.detailLabel}>Actors:</Text>
+                                    <Text style={styles.detailValue}>{info.actors}</Text>
+                                </View>
+                            )}
                         </View>
                     )}
                 </View>
+
+                {/* Cast with Images */}
+                {castArray.length > 0 && (
+                    <View style={styles.castSection}>
+                        <Text style={styles.sectionTitle}>Cast</Text>
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.castList}
+                        >
+                            {castArray.map(renderCastMember)}
+                        </ScrollView>
+                    </View>
+                )}
 
                 {/* Season Selector */}
                 <View style={styles.seasonsContainer}>
@@ -197,13 +319,9 @@ const SeriesDetailScreen = ({ route, navigation }) => {
                 {/* Episodes List */}
                 <View style={styles.episodesContainer}>
                     <Text style={styles.sectionTitle}>
-                        {episodes.length} Episode{episodes.length !== 1 ? 's' : ''}
+                        Season {selectedSeason} - {episodes.length} Episode{episodes.length !== 1 ? 's' : ''}
                     </Text>
-                    {episodes.map((episode, index) => (
-                        <View key={episode.id || index}>
-                            {renderEpisode({ item: episode })}
-                        </View>
-                    ))}
+                    {episodes.map((episode, index) => renderEpisode(episode, index))}
                 </View>
             </ScrollView>
         </View>
@@ -241,6 +359,23 @@ const styles = StyleSheet.create({
     content: {
         flex: 1,
     },
+    backdropContainer: {
+        width: width,
+        height: 220,
+        position: 'relative',
+    },
+    backdrop: {
+        width: '100%',
+        height: '100%',
+    },
+    backdropOverlay: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 100,
+        backgroundColor: 'linear-gradient(to bottom, transparent, #09090b)',
+    },
     header: {
         padding: 16,
         borderBottomWidth: 1,
@@ -266,30 +401,64 @@ const styles = StyleSheet.create({
     headerInfo: {
         flex: 1,
         marginLeft: 16,
-        justifyContent: 'center',
     },
     seriesTitle: {
         fontSize: 20,
         fontWeight: 'bold',
         color: '#ffffff',
+        marginBottom: 12,
+    },
+    genreContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
         marginBottom: 8,
     },
-    seriesGenre: {
+    genreChip: {
+        backgroundColor: '#27272a',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 4,
+    },
+    genreText: {
+        fontSize: 12,
+        color: '#a1a1aa',
+    },
+    metaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    metaText: {
         fontSize: 14,
         color: '#a1a1aa',
-        marginBottom: 4,
     },
-    seriesRating: {
+    metaDot: {
         fontSize: 14,
-        color: '#71717a',
-        marginBottom: 4,
-    },
-    seriesYear: {
-        fontSize: 13,
         color: '#52525b',
+        marginHorizontal: 6,
+    },
+    trailerButton: {
+        backgroundColor: '#27272a',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#3f3f46',
+        gap: 8,
+        marginBottom: 16,
+    },
+    trailerIcon: {
+        fontSize: 18,
+    },
+    trailerButtonText: {
+        color: '#ffffff',
+        fontSize: 15,
+        fontWeight: '600',
     },
     plotContainer: {
-        marginTop: 8,
+        marginBottom: 8,
     },
     plotTitle: {
         fontSize: 16,
@@ -301,6 +470,63 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#a1a1aa',
         lineHeight: 20,
+    },
+    detailsContainer: {
+        marginTop: 12,
+        gap: 6,
+    },
+    detailRow: {
+        flexDirection: 'row',
+    },
+    detailLabel: {
+        fontSize: 13,
+        color: '#71717a',
+        fontWeight: '500',
+        minWidth: 70,
+    },
+    detailValue: {
+        flex: 1,
+        fontSize: 13,
+        color: '#ffffff',
+    },
+    castSection: {
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#27272a',
+    },
+    castList: {
+        paddingRight: 16,
+        gap: 12,
+    },
+    castItem: {
+        width: 100,
+        alignItems: 'center',
+    },
+    castImage: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: '#27272a',
+        marginBottom: 8,
+    },
+    placeholderCastImage: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    castPlaceholder: {
+        fontSize: 32,
+    },
+    castName: {
+        fontSize: 13,
+        fontWeight: '500',
+        color: '#ffffff',
+        textAlign: 'center',
+        marginBottom: 2,
+    },
+    castCharacter: {
+        fontSize: 11,
+        color: '#71717a',
+        textAlign: 'center',
     },
     seasonsContainer: {
         padding: 16,
@@ -353,12 +579,12 @@ const styles = StyleSheet.create({
     },
     episodeLeft: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         flex: 1,
     },
     episodeThumbnail: {
-        width: 100,
-        height: 56,
+        width: 140,
+        height: 78,
         borderRadius: 6,
         backgroundColor: '#27272a',
         marginRight: 12,
@@ -382,13 +608,19 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     episodeMeta: {
-        fontSize: 13,
+        fontSize: 12,
         color: '#71717a',
-        marginBottom: 2,
+        marginBottom: 4,
     },
     episodeRating: {
         fontSize: 12,
         color: '#71717a',
+        marginBottom: 4,
+    },
+    episodePlot: {
+        fontSize: 12,
+        color: '#a1a1aa',
+        lineHeight: 16,
     },
     playButton: {
         width: 40,
@@ -397,6 +629,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#2563eb',
         justifyContent: 'center',
         alignItems: 'center',
+        marginLeft: 8,
     },
     playIcon: {
         color: '#ffffff',

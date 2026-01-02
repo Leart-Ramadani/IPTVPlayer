@@ -1,4 +1,4 @@
-// src/screens/SeriesScreen.jsx
+// src/screens/SeriesScreen.jsx - Updated to use detail screen
 import React, { useState, useEffect } from 'react';
 import {
     View,
@@ -77,33 +77,13 @@ const SeriesScreen = ({ navigation }) => {
         setIsRefreshing(false);
     };
 
-    const handleSeriesPress = async (seriesItem) => {
-        try {
-            const api = await createAPIInstance();
-            const seriesInfo = await api.getSeriesInfo(seriesItem.series_id);
-
-            const seasons = Object.keys(seriesInfo.episodes);
-            if (seasons.length > 0) {
-                const firstSeason = seasons[0];
-                const episodes = seriesInfo.episodes[firstSeason];
-                if (episodes.length > 0) {
-                    const firstEpisode = episodes[0];
-                    const streamUrl = api.getSeriesStreamUrl(
-                        firstEpisode.id,
-                        firstEpisode.container_extension || 'mp4'
-                    );
-
-                    navigation.navigate('Player', {
-                        streamUrl: streamUrl,
-                        title: `${seriesItem.name} - S${firstSeason}E${firstEpisode.episode_num}`,
-                        type: 'series',
-                    });
-                }
-            }
-        } catch (error) {
-            Alert.alert('Error', 'Failed to load series details');
-            console.error('Error loading series details:', error);
-        }
+    const handleSeriesPress = (seriesItem) => {
+        // Navigate to series detail screen
+        navigation.navigate('SeriesDetail', {
+            seriesId: seriesItem.series_id,
+            seriesName: seriesItem.name,
+            seriesCover: seriesItem.cover,
+        });
     };
 
     const clearSearch = () => {
@@ -128,9 +108,9 @@ const SeriesScreen = ({ navigation }) => {
                         <Text style={styles.placeholderText}>📺</Text>
                     </View>
                 )}
-                <View style={styles.playOverlay}>
-                    <View style={styles.playButton}>
-                        <Text style={styles.playIcon}>▶</Text>
+                <View style={styles.infoOverlay}>
+                    <View style={styles.playIcon}>
+                        <Text style={styles.playIconText}>▶</Text>
                     </View>
                 </View>
             </View>
@@ -138,7 +118,7 @@ const SeriesScreen = ({ navigation }) => {
                 {item.name}
             </Text>
             {item.rating && (
-                <Text style={styles.seriesRating}>⭐ {item.rating}</Text>
+                <Text style={styles.seriesRating}>⭐ {Math.round(item.rating * 100) / 100}</Text>
             )}
             {item.last_modified && (
                 <Text style={styles.seriesYear}>
@@ -365,26 +345,26 @@ const styles = StyleSheet.create({
     placeholderText: {
         fontSize: 32,
     },
-    playOverlay: {
+    infoOverlay: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
         justifyContent: 'center',
         alignItems: 'center',
         opacity: 0,
     },
-    playButton: {
+    playIcon: {
         width: 44,
         height: 44,
         borderRadius: 22,
-        backgroundColor: '#2563eb',
+        backgroundColor: 'rgba(37, 99, 235, 0.9)',
         justifyContent: 'center',
         alignItems: 'center',
     },
-    playIcon: {
+    playIconText: {
         color: '#ffffff',
         fontSize: 16,
         marginLeft: 2,

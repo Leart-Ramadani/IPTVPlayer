@@ -35,6 +35,7 @@ const LoginScreen = ({ navigation }) => {
             if (savedCreds) {
                 const parsed = JSON.parse(savedCreds);
                 setCredentials(parsed);
+                navigation.replace('Home');
             }
         } catch (error) {
             console.log('Error loading saved credentials:', error);

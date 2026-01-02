@@ -208,18 +208,6 @@ const HomeScreen = ({ navigation }) => {
                         </TouchableOpacity>
                     ))}
                 </View>
-
-                <View style={styles.infoSection}>
-                    <Text style={styles.infoTitle}>Troubleshooting</Text>
-                    <Text style={styles.infoText}>
-                        If you encounter playback errors (HTTP 458), this usually means:
-                        {'\n\n'}• Your credentials may have expired
-                        {'\n'}• Maximum connection limit reached
-                        {'\n'}• Service is temporarily unavailable
-                        {'\n\n'}
-                        Use the "Test Connection" button above to verify your account status.
-                    </Text>
-                </View>
             </ScrollView>
         </SafeAreaView>
     );

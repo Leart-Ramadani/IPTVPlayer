@@ -1,4 +1,4 @@
-// src/screens/MoviesScreen.jsx
+// src/screens/MoviesScreen.jsx - Updated to use detail screen
 import React, { useState, useEffect } from 'react';
 import {
     View,
@@ -77,20 +77,13 @@ const MoviesScreen = ({ navigation }) => {
         setIsRefreshing(false);
     };
 
-    const handleMoviePress = async (movie) => {
-        try {
-            const api = await createAPIInstance();
-            const streamUrl = api.getVODStreamUrl(movie.stream_id, movie.container_extension || 'mp4');
-
-            navigation.navigate('Player', {
-                streamUrl: streamUrl,
-                title: movie.name,
-                type: 'vod',
-            });
-        } catch (error) {
-            Alert.alert('Error', 'Failed to play movie');
-            console.error('Error playing movie:', error);
-        }
+    const handleMoviePress = (movie) => {
+        // Navigate to movie detail screen instead of playing directly
+        navigation.navigate('MovieDetail', {
+            movieId: movie.stream_id,
+            movieName: movie.name,
+            movieCover: movie.stream_icon,
+        });
     };
 
     const clearSearch = () => {
@@ -115,9 +108,9 @@ const MoviesScreen = ({ navigation }) => {
                         <Text style={styles.placeholderText}>🎬</Text>
                     </View>
                 )}
-                <View style={styles.playOverlay}>
-                    <View style={styles.playButton}>
-                        <Text style={styles.playIcon}>▶</Text>
+                <View style={styles.infoOverlay}>
+                    <View style={styles.playIcon}>
+                        <Text style={styles.playIconText}>▶</Text>
                     </View>
                 </View>
             </View>
@@ -125,7 +118,7 @@ const MoviesScreen = ({ navigation }) => {
                 {item.name}
             </Text>
             {item.rating && (
-                <Text style={styles.movieRating}>⭐ {item.rating}</Text>
+                <Text style={styles.movieRating}>⭐ {Math.round(item.rating * 100) / 100}</Text>
             )}
         </TouchableOpacity>
     );
@@ -347,26 +340,26 @@ const styles = StyleSheet.create({
     placeholderText: {
         fontSize: 32,
     },
-    playOverlay: {
+    infoOverlay: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
         justifyContent: 'center',
         alignItems: 'center',
         opacity: 0,
     },
-    playButton: {
+    playIcon: {
         width: 44,
         height: 44,
         borderRadius: 22,
-        backgroundColor: '#2563eb',
+        backgroundColor: 'rgba(37, 99, 235, 0.9)',
         justifyContent: 'center',
         alignItems: 'center',
     },
-    playIcon: {
+    playIconText: {
         color: '#ffffff',
         fontSize: 16,
         marginLeft: 2,

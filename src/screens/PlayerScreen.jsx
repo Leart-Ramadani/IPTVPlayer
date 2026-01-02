@@ -1,4 +1,4 @@
-// src/screens/PlayerScreen.jsx
+// src/screens/PlayerScreen.jsx - Production Safe Version
 import React, { useState, useRef, useEffect } from 'react';
 import {
     View,
@@ -10,6 +10,7 @@ import {
     Alert,
     Modal,
     ScrollView,
+    Platform,
 } from 'react-native';
 import Video from 'react-native-video';
 import Orientation from 'react-native-orientation-locker';
@@ -19,6 +20,7 @@ const PlayerScreen = ({ route, navigation }) => {
     const { streamUrl, title, type } = route.params;
     const videoRef = useRef(null);
 
+    // State management
     const [isPlaying, setIsPlaying] = useState(true);
     const [isBuffering, setIsBuffering] = useState(false);
     const [showControls, setShowControls] = useState(true);
@@ -27,8 +29,6 @@ const PlayerScreen = ({ route, navigation }) => {
     const [error, setError] = useState(null);
     const [retryCount, setRetryCount] = useState(0);
     const [isSeeking, setIsSeeking] = useState(false);
-
-    // Advanced controls
     const [playbackRate, setPlaybackRate] = useState(1.0);
     const [showSpeedMenu, setShowSpeedMenu] = useState(false);
     const [showQualityMenu, setShowQualityMenu] = useState(false);
@@ -38,13 +38,17 @@ const PlayerScreen = ({ route, navigation }) => {
 
     const controlsTimeout = useRef(null);
     const MAX_RETRIES = 2;
-
     const playbackSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
 
     useEffect(() => {
+        console.log('PlayerScreen mounted with URL:', streamUrl);
         Orientation.lockToLandscape();
         return () => {
+            console.log('PlayerScreen unmounting');
             Orientation.unlockAllOrientations();
+            if (controlsTimeout.current) {
+                clearTimeout(controlsTimeout.current);
+            }
         };
     }, []);
 
@@ -73,30 +77,42 @@ const PlayerScreen = ({ route, navigation }) => {
     };
 
     const handlePlayPause = () => {
+        console.log('Play/Pause toggled:', !isPlaying);
         setIsPlaying(!isPlaying);
         resetControlsTimeout();
     };
 
     const handleBack = () => {
+        console.log('Back button pressed');
         navigation.goBack();
     };
 
     const handleSkipForward = () => {
-        if (videoRef.current && duration > 0) {
-            const newTime = Math.min(currentTime + 10, duration);
-            videoRef.current.seek(newTime);
-            setCurrentTime(newTime);
+        try {
+            if (videoRef.current && duration > 0) {
+                const newTime = Math.min(currentTime + 10, duration);
+                console.log('Skipping forward to:', newTime);
+                videoRef.current.seek(newTime);
+                setCurrentTime(newTime);
+            }
+            resetControlsTimeout();
+        } catch (err) {
+            console.error('Skip forward error:', err);
         }
-        resetControlsTimeout();
     };
 
     const handleSkipBackward = () => {
-        if (videoRef.current) {
-            const newTime = Math.max(currentTime - 10, 0);
-            videoRef.current.seek(newTime);
-            setCurrentTime(newTime);
+        try {
+            if (videoRef.current) {
+                const newTime = Math.max(currentTime - 10, 0);
+                console.log('Skipping backward to:', newTime);
+                videoRef.current.seek(newTime);
+                setCurrentTime(newTime);
+            }
+            resetControlsTimeout();
+        } catch (err) {
+            console.error('Skip backward error:', err);
         }
-        resetControlsTimeout();
     };
 
     const handleSeek = (value) => {
@@ -105,19 +121,26 @@ const PlayerScreen = ({ route, navigation }) => {
     };
 
     const handleSlidingComplete = (value) => {
-        if (videoRef.current) {
-            videoRef.current.seek(value);
+        try {
+            if (videoRef.current) {
+                console.log('Seeking to:', value);
+                videoRef.current.seek(value);
+            }
+            setIsSeeking(false);
+            resetControlsTimeout();
+        } catch (err) {
+            console.error('Seek error:', err);
+            setIsSeeking(false);
         }
-        setIsSeeking(false);
-        resetControlsTimeout();
     };
 
     const handleBuffer = ({ isBuffering: buffering }) => {
+        console.log('Buffering:', buffering);
         setIsBuffering(buffering);
     };
 
     const handleError = (error) => {
-        console.error('Video error:', error);
+        console.error('Video error:', JSON.stringify(error, null, 2));
 
         const errorString = error?.error?.errorString || '';
         const errorCode = error?.error?.errorCode || '';
@@ -135,11 +158,7 @@ const PlayerScreen = ({ route, navigation }) => {
                 setError('Authentication failed');
                 Alert.alert(
                     'Authentication Error',
-                    'Failed to authenticate with the IPTV service. This could be due to:\n\n' +
-                    '• Invalid or expired credentials\n' +
-                    '• Maximum connections reached\n' +
-                    '• Service temporarily unavailable\n\n' +
-                    'Please check your account or try again later.',
+                    'Failed to authenticate with the IPTV service.',
                     [
                         { text: 'Go Back', onPress: () => navigation.goBack() },
                         {
@@ -158,49 +177,65 @@ const PlayerScreen = ({ route, navigation }) => {
             setError('Playback error');
             Alert.alert(
                 'Playback Error',
-                'Failed to play this stream. Please try another stream.',
-                [
-                    { text: 'OK', onPress: () => navigation.goBack() }
-                ]
+                'Failed to play this stream.',
+                [{ text: 'OK', onPress: () => navigation.goBack() }]
             );
         }
     };
 
-    const handleProgress = ({ currentTime, seekableDuration }) => {
-        if (!isSeeking) {
-            setCurrentTime(currentTime);
-        }
-        setDuration(seekableDuration || duration);
+    const handleProgress = (data) => {
+        try {
+            const { currentTime: ct, seekableDuration } = data;
+            if (!isSeeking && ct !== undefined) {
+                setCurrentTime(ct);
+            }
+            if (seekableDuration !== undefined) {
+                setDuration(seekableDuration || duration);
+            }
 
-        if (error && currentTime > 0) {
-            setError(null);
-            setRetryCount(0);
+            if (error && ct > 0) {
+                setError(null);
+                setRetryCount(0);
+            }
+        } catch (err) {
+            console.error('Progress error:', err);
         }
     };
 
-    const handleLoad = ({ duration, textTracks: tracks }) => {
-        setDuration(duration);
-        setError(null);
-        setRetryCount(0);
+    const handleLoad = (data) => {
+        try {
+            console.log('Video loaded:', data);
+            if (data.duration !== undefined) {
+                setDuration(data.duration);
+            }
+            setError(null);
+            setRetryCount(0);
 
-        if (tracks && tracks.length > 0) {
-            setTextTracks(tracks);
+            if (data.textTracks && Array.isArray(data.textTracks) && data.textTracks.length > 0) {
+                setTextTracks(data.textTracks);
+            }
+        } catch (err) {
+            console.error('Load error:', err);
         }
     };
 
     const handleSpeedChange = (speed) => {
+        console.log('Speed changed to:', speed);
         setPlaybackRate(speed);
         setShowSpeedMenu(false);
         resetControlsTimeout();
     };
 
     const handleSubtitleChange = (track) => {
+        console.log('Subtitle changed:', track);
         setSelectedTextTrack(track);
         setShowSubtitlesMenu(false);
         resetControlsTimeout();
     };
 
     const formatTime = (seconds) => {
+        if (!seconds || isNaN(seconds)) return '0:00';
+
         const hrs = Math.floor(seconds / 3600);
         const mins = Math.floor((seconds % 3600) / 60);
         const secs = Math.floor(seconds % 60);
@@ -242,6 +277,7 @@ const PlayerScreen = ({ route, navigation }) => {
                 playInBackground={false}
                 playWhenInactive={false}
                 ignoreSilentSwitch="ignore"
+                progressUpdateInterval={1000}
             />
 
             <TouchableOpacity
@@ -252,7 +288,7 @@ const PlayerScreen = ({ route, navigation }) => {
                 {isBuffering && !error && (
                     <View style={styles.bufferingContainer}>
                         <ActivityIndicator size="large" color="#ffffff" />
-                        <Text style={styles.bufferingText}>Loading...</Text>
+                        <Text style={styles.bufferingText}>Buffering...</Text>
                     </View>
                 )}
 
@@ -270,7 +306,6 @@ const PlayerScreen = ({ route, navigation }) => {
 
                 {showControls && !error && (
                     <View style={styles.controlsContainer}>
-                        {/* Top Bar */}
                         <View style={styles.topBar}>
                             <TouchableOpacity onPress={handleBack} style={styles.backButton}>
                                 <Text style={styles.backIcon}>←</Text>
@@ -279,7 +314,6 @@ const PlayerScreen = ({ route, navigation }) => {
                                 {title}
                             </Text>
                             <View style={styles.topRightControls}>
-                                {/* Subtitles Button */}
                                 {textTracks.length > 0 && (
                                     <TouchableOpacity
                                         onPress={() => setShowSubtitlesMenu(true)}
@@ -288,7 +322,6 @@ const PlayerScreen = ({ route, navigation }) => {
                                         <Text style={styles.iconText}>CC</Text>
                                     </TouchableOpacity>
                                 )}
-                                {/* Speed Button */}
                                 <TouchableOpacity
                                     onPress={() => setShowSpeedMenu(true)}
                                     style={styles.iconButton}
@@ -298,7 +331,6 @@ const PlayerScreen = ({ route, navigation }) => {
                             </View>
                         </View>
 
-                        {/* Center Controls */}
                         <View style={styles.centerControls}>
                             <TouchableOpacity
                                 onPress={handleSkipBackward}
@@ -326,14 +358,13 @@ const PlayerScreen = ({ route, navigation }) => {
                             </TouchableOpacity>
                         </View>
 
-                        {/* Bottom Bar */}
                         {type !== 'live' && (
                             <View style={styles.bottomBar}>
                                 <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
                                 <Slider
                                     style={styles.progressSlider}
                                     minimumValue={0}
-                                    maximumValue={duration}
+                                    maximumValue={duration || 1}
                                     value={currentTime}
                                     onValueChange={handleSeek}
                                     onSlidingComplete={handleSlidingComplete}
@@ -345,7 +376,6 @@ const PlayerScreen = ({ route, navigation }) => {
                             </View>
                         )}
 
-                        {/* Live Indicator */}
                         {type === 'live' && (
                             <View style={styles.liveIndicatorContainer}>
                                 <View style={styles.liveIndicator}>
@@ -358,7 +388,6 @@ const PlayerScreen = ({ route, navigation }) => {
                 )}
             </TouchableOpacity>
 
-            {/* Speed Menu Modal */}
             <Modal
                 visible={showSpeedMenu}
                 transparent={true}
@@ -403,7 +432,6 @@ const PlayerScreen = ({ route, navigation }) => {
                 </TouchableOpacity>
             </Modal>
 
-            {/* Subtitles Menu Modal */}
             <Modal
                 visible={showSubtitlesMenu}
                 transparent={true}
